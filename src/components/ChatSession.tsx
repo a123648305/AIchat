@@ -9,6 +9,7 @@ type ChatSessionProps = {
   messageList: { content: string; loading:boolean; role: 'assistant' | 'user'; time: string }[];
   loading: boolean;
   onSend: (content: string) => void;
+  onCancel: (e: any) => void;
 };
 
 const md = markdownit({ html: true, breaks: true });
@@ -27,13 +28,14 @@ const ChatSession: React.FC<ChatSessionProps> = (props) => {
   const [senderText, setSenderText] = useState('');
   const listRef = useRef<any>(null);
 
-  const { messageList, onSend, loading } = props;
+  const { messageList, onSend, loading,onCancel } = props;
 
   const onSubmit = (content: string) => {
     console.log('ggg', content);
     onSend(content);
     setSenderText('');
   };
+
 
   const bubbleFooter = (
     <Space>
@@ -77,7 +79,7 @@ const ChatSession: React.FC<ChatSessionProps> = (props) => {
         <Bubble.List ref={listRef} style={{ height: 'calc(100vh - 370px)' }} items={list} />
       </Flex>
       <Prompts title="✨Tips" items={items} onItemClick={promptsClick} wrap className="mb-2" />
-      <Sender loading={loading} placeholder="Press Enter to send message" onSubmit={onSubmit} value={senderText} onChange={(value) => setSenderText(value)} />
+      <Sender loading={loading} placeholder="Press Enter to send message" onSubmit={onSubmit} value={senderText} onChange={(value) => setSenderText(value)} onCancel={onCancel}/>
     </div>
   );
 };
