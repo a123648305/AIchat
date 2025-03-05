@@ -74,7 +74,7 @@ const ChatSession: React.FC<ChatSessionProps> = (props) => {
   return (
     <div>
       <Flex vertical gap="small">
-        <Bubble.List ref={listRef} style={{ height: 500 }} items={list} />
+        <Bubble.List ref={listRef} style={{ height: 'calc(100vh - 370px)' }} items={list} />
       </Flex>
       <Prompts title="✨Tips" items={items} onItemClick={promptsClick} wrap className="mb-2" />
       <Sender loading={loading} placeholder="Press Enter to send message" onSubmit={onSubmit} value={senderText} onChange={(value) => setSenderText(value)} />
