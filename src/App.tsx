@@ -6,9 +6,10 @@ import { Layout } from 'antd';
 import { useXAgent } from '@ant-design/x';
 import './assets/home.less';
 
-const BASE_URL = 'https://api.example.com';
-const PATH = '/chat';
-const MODEL = 'gpt-3.5-turbo';
+const BASE_URL = 'https://api.deepseek.com';
+const PATH = '/chat/completions';
+// const MODEL = 'deepseek-reasoner'; deepseek-chat
+const MODEL = 'deepseek-chat';
 
 const App: React.FC = () => {
   const { Header, Footer, Sider, Content } = Layout;
@@ -18,59 +19,57 @@ const App: React.FC = () => {
   }>({
     baseURL: BASE_URL + PATH,
     model: MODEL,
-    // dangerouslyApiKey: API_KEY
+    dangerouslyApiKey: 'Bearer sk-5e5d0169d67e46668310ed0cdc7f450b',
   });
 
-  const [messageList, setMessageList] = useState([
-    {
-      content: 'hello',
-      name: 'Ai',
-      time: '2023-03-01 04:00:00',
-    },
-    {
-      content: 'how are you?',
-      name: 'Bob',
-      time: '2023-03-01 12:00:00',
-    },
-    {
-      content: 'I am fine, thank you.',
-      name: 'Ai',
-      time: '2023-03-01 13:00:00',
-    },
-    {
-      content: 'What are you doing?',
-      name: 'Bob',
-      time: '2023-03-01 12:00:01',
-    },
-  ]);
+  const [messageList, setMessageList] = useState([]);
 
   async function onSend(content: string) {
-    agent.request(
-      {
-        messages: [{ role: 'Bob', content }],
-      },
-      {
-        onSuccess: (messages) => {
-          console.log('onSuccess', messages);
+    setMessageList((data) => {
+      const newData = [
+        ...data,
+        {
+          role: 'user',
+          content,
+          time: new Date().toLocaleString(),
         },
-        onError: (error) => {
-          console.error('onError', error);
+        {
+          role: 'assistant',
+          content: '加载中...',
+          loading: true,
+          time: new Date().toLocaleString(),
         },
-        onUpdate: (msg) => {
-          setMessageList((data) => {
-            return [
-              ...data,
-              {
-                content,
-                name: 'Bob',
-                time: new Date().toLocaleString(),
-              },
-            ];
-          });
-          console.log('onUpdate', msg);
+      ];
+      
+      agent.request(
+        {
+          messages: newData.slice(0, -1),
         },
-      },
-    );
+        {
+          onSuccess: (messages) => {
+            console.log('onSuccess', messages);
+          },
+          onError: (error) => {
+            console.error('onError', error);
+          },
+          onUpdate: (msg) => {
+            const message = (msg as unknown as any).choices[0].message;
+            setMessageList((data) => {
+              return [
+                ...data.slice(0, -1),
+                {
+                  ...message,
+                  time: new Date().toLocaleString(),
+                },
+              ];
+            });
+            console.log('onUpdate', msg);
+          },
+        }
+      );
+      
+      return newData;
+    });
   }
 
   return (
@@ -84,7 +83,7 @@ const App: React.FC = () => {
             <ChatItem />
           </Sider>
           <Content className="chat-box-content">
-            <ChatSession messageList={messageList} onSend={onSend} />
+            <ChatSession messageList={messageList} onSend={onSend} loading={agent.isRequesting()}/>
           </Content>
         </Layout>
         <Footer className="chat-box-footer">Footer</Footer>

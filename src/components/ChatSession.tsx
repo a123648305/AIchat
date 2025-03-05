@@ -1,21 +1,22 @@
-import {
-  UserOutlined,
-  SyncOutlined,
-  CopyOutlined,
-  BulbOutlined,
-  InfoCircleOutlined,
-  RocketOutlined,
-  SmileOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
+import { UserOutlined, SyncOutlined, CopyOutlined, BulbOutlined } from '@ant-design/icons';
 import { Button, Flex, Space, message } from 'antd';
 import { Bubble, Prompts, Sender } from '@ant-design/x';
 import { useMemo, useRef, useState } from 'react';
+import { Typography } from 'antd';
+import markdownit from 'markdown-it';
 
 type ChatSessionProps = {
-  messageList: { content: string; name?: string; time: string }[];
+  messageList: { content: string; loading:boolean; role: 'assistant' | 'user'; time: string }[];
+  loading: boolean;
   onSend: (content: string) => void;
 };
+
+const md = markdownit({ html: true, breaks: true });
+const renderMarkdown= (content:string) => (
+    <Typography>
+      <div dangerouslySetInnerHTML={{ __html: md.render(content) }} />
+    </Typography>
+  );
 
 const ChatSession: React.FC<ChatSessionProps> = (props) => {
   const fooAvatar: React.CSSProperties = {
@@ -26,28 +27,18 @@ const ChatSession: React.FC<ChatSessionProps> = (props) => {
   const [senderText, setSenderText] = useState('');
   const listRef = useRef<any>(null);
 
-  const { messageList, onSend } = props;
+  const { messageList, onSend, loading } = props;
 
   const onSubmit = (content: string) => {
     console.log('ggg', content);
-    message.success('Send message successfully!');
     onSend(content);
+    setSenderText('');
   };
 
   const bubbleFooter = (
     <Space>
-      <Button
-        color="default"
-        variant="text"
-        size="small"
-        icon={<SyncOutlined />}
-      />
-      <Button
-        color="default"
-        variant="text"
-        size="small"
-        icon={<CopyOutlined />}
-      />
+      <Button color="default" variant="text" size="small" icon={<SyncOutlined />} />
+      <Button color="default" variant="text" size="small" icon={<CopyOutlined />} />
     </Space>
   );
 
@@ -57,31 +48,6 @@ const ChatSession: React.FC<ChatSessionProps> = (props) => {
       icon: <BulbOutlined style={{ color: '#FFD700' }} />,
       label: 'Ignite Your Creativity',
       description: 'Got any sparks for a new project?',
-    },
-    {
-      key: '2',
-      icon: <InfoCircleOutlined style={{ color: '#1890FF' }} />,
-      label: 'Uncover Background Info',
-      description: 'Help me understand the background of this topic.',
-    },
-    {
-      key: '3',
-      icon: <RocketOutlined style={{ color: '#722ED1' }} />,
-      label: 'Efficiency Boost Battle',
-      description: 'How can I work faster and better?',
-    },
-    {
-      key: '4',
-      icon: <SmileOutlined style={{ color: '#52C41A' }} />,
-      label: 'Tell me a Joke',
-      description:
-        'Why do not ants get sick? Because they have tiny ant-bodies!',
-    },
-    {
-      key: '5',
-      icon: <WarningOutlined style={{ color: '#FF4D4F' }} />,
-      label: 'Common Issue Solutions',
-      description: 'How to solve common issues? Share some tips!',
     },
   ];
 
@@ -93,35 +59,25 @@ const ChatSession: React.FC<ChatSessionProps> = (props) => {
   const list = useMemo(() => {
     return messageList.map((item, index) => ({
       key: index,
-      placement: item.name === 'Ai' ? 'start' : 'end',
-      role: item.name,
+      placement: item.role === 'assistant' ? 'start' : 'end',
+      role: item.role,
+      loading: item.loading,
       content: item.content,
       avatar: { icon: <UserOutlined />, style: fooAvatar },
-      header: item.name,
+      header: item.role,
       footer: bubbleFooter,
       typing: { step: 2, interval: 50 },
+      messageRender:renderMarkdown
     }));
   }, [messageList]);
 
   return (
     <div>
       <Flex vertical gap="small">
-        <Bubble.List ref={listRef} style={{ maxHeight: 400 }} items={list} />
+        <Bubble.List ref={listRef} style={{ height: 500 }} items={list} />
       </Flex>
-      <Prompts
-        title="✨ Inspirational Sparks and Marvelous Tips"
-        items={items}
-        onItemClick={promptsClick}
-        wrap
-        className="mb-2"
-      />
-      <Sender
-        submitType="shiftEnter"
-        placeholder="Press Shift + Enter to send message"
-        onSubmit={onSubmit}
-        value={senderText}
-        onChange={(value) => setSenderText(value)}
-      />
+      <Prompts title="✨Tips" items={items} onItemClick={promptsClick} wrap className="mb-2" />
+      <Sender loading={loading} placeholder="Press Enter to send message" onSubmit={onSubmit} value={senderText} onChange={(value) => setSenderText(value)} />
     </div>
   );
 };
