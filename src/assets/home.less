@@ -1,13 +1,19 @@
 .chat-box {
   border-radius: 8px;
+  display: flex;
   .chat-box-header {
-    padding: 10px 20px;
-    height: 120px;
+    padding: 10px;
+    height: 80px;
   }
   .chat-box-sider {
+    transition: all 0.3s ease;
+    @media screen and (max-width: 768px) {
+      display: none;
+    }
   }
   .chat-box-content {
-    padding: 20px;
+    padding: 10px;
+    flex: 1;
   }
   .chat-box-footer {
     text-align: center;
