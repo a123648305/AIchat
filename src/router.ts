@@ -7,7 +7,7 @@ const router = createBrowserRouter([
   {
     id: 'root',
     path: '/',
-    Component: App,
+    Component: Map,
   },
   {
     path: '/map',
