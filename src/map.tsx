@@ -1,15 +1,24 @@
 import AMapLoader from '@amap/amap-jsapi-loader';
 import './assets/map.less';
-import { useEffect, useState } from 'react';
-import { FloatButton } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Drawer, FloatButton, Space, Spin } from 'antd';
+import MapMarkerList from './components/MapMarkerList';
+import MapModal from './components/MapModal';
 
-type ListMarkerType = { title: string; position: { lat: number; lng: number }; src?: string }[];
+type ListMarkerType = {
+  title: string;
+  position: { lat: number; lng: number };
+  poster?: string;
+  remark?: string;
+  fileList?: { id: string | number; name: string; url: string; createdAt?: string }[];
+}[];
 
 const Map: React.FC = () => {
-  const [map, setMap] = useState<any>(null);
+  const [map, setMap] = useState<Record<string, any> | null>(null);
+  const amp = useRef(null);
 
   const [list, setList] = useState<ListMarkerType>([
-    { title: '北京', position: { lat: 39.90403, lng: 116.407525 }, src: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png' },
+    { title: '北京', position: { lat: 39.90403, lng: 116.407525 }, poster: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png' },
   ]);
 
   const mapInit = () => {
@@ -21,9 +30,9 @@ const Map: React.FC = () => {
     AMapLoader.load({
       key: '2ecba12966505e6a26a977ae42e5b836', // 申请好的Web端开发者Key，首次调用 load 时必填
       version: '2.0', // 指定要加载的 JSAPI 的版本，缺省时默认为 1.4.15
-      plugins: ['AMap.Scale', 'AMap.Geolocation', 'AMap.PlaceSearch', 'AMap.ControlBar'], //需要使用的的插件列表，如比例尺'AMap.Scale'，支持添加多个如：['...','...']
     })
       .then((AMap: any) => {
+        amp.current = AMap;
         const instance = new AMap.Map('container', {
           //设置地图容器id
           viewMode: '3D', //是否为3D地图模式
@@ -45,7 +54,7 @@ const Map: React.FC = () => {
             content: `<div class="marker-content">
                         <span>经度：${item.position.lng}</span>
                         <span>纬度：${item.position.lat}</span>
-                        <img src="${item.src}" alt="img" />
+                        <img src="${item.poster}" width="120px" alt="img" />
                     </div>`,
           };
           addMarker(obj);
@@ -88,23 +97,41 @@ const Map: React.FC = () => {
           });
         };
 
-        // AMap.plugin(['AMap.PlaceSearch', 'AMap.ControlBar'], function () {
-        //   //构造地点查询类
-        //   var placeSearch = new AMap.PlaceSearch({
-        //     pageSize: 5, // 单页显示结果条数
-        //     pageIndex: 1, // 页码
-        //     city: '010', // 兴趣点城市
-        //     citylimit: true, //是否强制限制在设置的城市内搜索
-        //     map: map, // 展现结果的地图实例
-        //     panel: 'panel', // 结果列表将在此容器中进行展示。
-        //     autoFitView: true, // 是否自动调整地图视野使绘制的 Marker点都处于视口的可见范围
-        //   });
-        //   //关键字查询
-        //   placeSearch.search('北京大学');
-        // });
+        AMap.plugin(['AMap.ToolBar', 'AMap.Scale', 'AMap.HawkEye', 'AMap.MapType', 'AMap.Geolocation', 'AMap.ControlBar', 'AMap.Walking'], function () {
+          //添加工具条控件，工具条控件集成了缩放、平移、定位等功能按钮在内的组合控件
+          //   instance.addControl(new AMap.ToolBar());
+
+          //添加比例尺控件，展示地图在当前层级和纬度下的比例尺
+          instance.addControl(
+            new AMap.Scale({
+              position: 'RB',
+            })
+          );
+
+          //添加类别切换控件，实现默认图层与卫星图、实施交通图层之间切换的控制
+          instance.addControl(new AMap.MapType());
+
+          //添加定位控件，用来获取和展示用户主机所在的经纬度位置
+          instance.addControl(
+            new AMap.Geolocation({
+              position: 'LB',
+            })
+          );
+
+          //添加控制罗盘控件，用来控制地图的旋转和倾斜
+          instance.addControl(new AMap.ControlBar());
+
+          // 添加步行导航控件
+          instance.walk = new AMap.Walking({
+            map: instance,
+            autoFitView: true,
+            useGeoLocation: true,
+            panel: 'path-result',
+          });
+        });
 
         instance.on('complete', () => {
-          console.log('地图加载完成');
+          console.log('地图加载完成', instance);
           setSelfPosition();
         });
 
@@ -127,16 +154,115 @@ const Map: React.FC = () => {
       });
   };
 
-  const addCurMarker = () => {
+  // 导航到指定位置
+  const [showPath, setShowPath] = useState<boolean>(false); // 显示路径规划
+  const [loading, setLoading] = useState<boolean>(false); // 加载中
+  const pathResult = useRef<any>();
+
+  const toAppNavigate = () => {
+    try {
+      // 构建 amapuri 协议链接
+      const startPosition = [pathResult.current.start.location.lat, pathResult.current.start.location.lng]; // 起点坐标
+      const endPosition = [pathResult.current.end.location.lat, pathResult.current?.end.location.lng]; // 终点坐标
+      const [startLat, startLng] = startPosition; // 起点坐标 [经度, 纬度]
+      const [endLat, endLng] = endPosition; // 终点坐标 [经度, 纬度
+
+      const uri = `amapuri://route/plan?dlat=${endLat}&dlon=${endLng}&dname=终点&slat=${startLat}&slon=${startLng}&sname=起点&t=2`;
+      // 拉起高德地图 APP
+      window.location.href = uri;
+    } catch (error) {
+      console.log(error, 'toAppNavigateError');
+    }
+  };
+
+  const walkTo = (startPosition = [113.943242, 22.534887], endPosition = [113.944143, 22.527911]) => {
+    try {
+      console.log('walkTo');
+      if (!map || !amp.current) return;
+      //   amp.current.event.addListener(map.walk, 'complete', (data: unknown) => {
+      //     console.log('导航完成', data);
+      //   }); //返回导航查询结果
+      setShowPath(true);
+      setLoading(true);
+      map.walk.search(startPosition, endPosition, (status: string, result: unknown) => {
+        if (status === 'complete') {
+          console.log('步行导航路径规划成功', result);
+          pathResult.current = result;
+        } else {
+          console.log('步行导航路径规划失败：' + result);
+        }
+        setLoading(false);
+      });
+    } catch (error) {
+      console.log(error, 'walkToError');
+    }
+  };
+
+  // 添加当前位置
+  const [showDig, setShowDig] = useState<boolean>(false);
+  const [formModel, setFormModel] = useState({
+    position: { lat: 0, lng: 0 },
+    title: '',
+    remark: '',
+    fileList: [],
+  });
+
+  const openModal = () => {
+    const position = { lat: 0, lng: 0 };
     if (map) {
       const { lng, lat } = map.getCenter();
-      const data = {
-        position: { lng, lat },
-        title: `新锚点`,
-        content: '<div class="marker-content">新锚点</div>',
-      };
-  }
-}
+      position.lat = lat;
+      position.lng = lng;
+    }
+    setFormModel({
+      position,
+      title: '',
+      remark: '',
+      fileList: [],
+    });
+    setShowDig(true);
+  };
+
+  const onConfirm = (data: Record<string, any>) => {
+    setMapMarkerList([...mapMarkerList, data]);
+  };
+
+  // 锚点列表
+  const [markerShow, setMarkerShow] = useState(false);
+  const [mapMarkerList, setMapMarkerList] = useState<ListMarkerType>([
+    {
+      title: '北京',
+      position: { lat: 39.90403, lng: 116.407525 },
+      remark: '一段描述',
+      fileList: [
+        {
+          id: 1,
+          name: 'image.png',
+          url: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
+        },
+        {
+          id: 2,
+          name: 'image.png',
+          url: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
+        },
+        {
+          id: 3,
+          name: 'image.png',
+          url: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
+        },
+        {
+          id: 4,
+          name: 'image.png',
+          url: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
+        },
+      ],
+      createdAt: '2025年4月1日10:50:55',
+    },
+  ]);
+
+  const openList = () => {
+    setMarkerShow(true);
+  };
 
   useEffect(() => {
     mapInit();
@@ -148,7 +274,24 @@ const Map: React.FC = () => {
   return (
     <div className="map-warp">
       <div id="container" className="map-container"></div>
-      <FloatButton  type="default" style={{ insetInlineEnd: 94 }} onClick={()=>addCurMarker()}>标记位置</FloatButton>
+      <Space>
+        <Button type="primary" onClick={openModal}>
+          添加当前位置
+        </Button>
+        <Button type="primary" onClick={openList}>
+          锚点列表
+        </Button>
+        <Button type="primary" onClick={() => walkTo()}>
+          walkTo
+        </Button>
+      </Space>
+      <Drawer title="导航路线" placement="bottom" open={showPath} onClose={() => setShowPath(false)}>
+        {loading && <Spin size="large" />}
+        <div id="path-result"></div>
+        <Button type="primary" onClick={toAppNavigate}>高德地图导航</Button>
+      </Drawer>
+      <MapMarkerList list={mapMarkerList} show={markerShow} onClose={() => setMarkerShow(false)}></MapMarkerList>
+      <MapModal visible={showDig} onConfirm={onConfirm} formModel={formModel} onCancel={() => setShowDig(false)}></MapModal>
     </div>
   );
 };
