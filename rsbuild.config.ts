@@ -6,6 +6,9 @@ import { presetAttributify } from '@unocss/preset-attributify';
 import { presetUno } from '@unocss/preset-uno';
 export default defineConfig({
   plugins: [pluginReact(), pluginLess()],
+  html: {
+    title: '地图标记',
+  },
   tools: {
     rspack: {
       plugins: [
