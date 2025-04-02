@@ -19,8 +19,8 @@ const Map: React.FC = () => {
 
   const [mapMarkerList, setMapMarkerList] = useState<ListMarkerType>([
     {
-      title: '标记点1',
-      position: { lat: 22.534887, lng: 113.943242 },
+      title: '虎行标记点1',
+      position: { lat: 26.038593, lng: 115.783695 },
       remark: '一段描述一段描述一段描述一段描述一段描述一段描述一段描述一段描述',
       fileList: [
         {
@@ -47,7 +47,14 @@ const Map: React.FC = () => {
       createdAt: '2025年4月1日10:50:55',
     },
     {
-      title: '标记点2',
+        title: '虎行标记点2',
+        position: { lat:26.045482, lng: 115.786809 },
+        remark: 'x描述',
+        fileList: [],
+        createdAt: '2025年4月1日10:50:55',
+      },
+    {
+      title: '深圳标记点',
       position: { lat: 22.543667, lng: 113.948507 },
       remark: '一段描述',
       fileList: [],
@@ -345,8 +352,8 @@ const Map: React.FC = () => {
         <Button type="primary" onClick={() => setShowRemark(!showRemark)}>
           {showRemark ? '隐藏' : '展示'}描述
         </Button>
-        <Button type="primary" onClick={() => walkTo()}>
-          walkTo
+        <Button type="primary" onClick={() => movePointCenter([115.785154,26.040390])}>
+          虎行
         </Button>
       </Space>
       <Drawer title="导航路线" placement="bottom" open={showPath} onClose={() => setShowPath(false)}>
