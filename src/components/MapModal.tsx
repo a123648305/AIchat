@@ -1,5 +1,5 @@
-import { Form, Input, Modal, Upload, Image, UploadFile } from 'antd';
-import { useState } from 'react';
+import { Form, Input, Modal, Upload, Image, UploadFile, Button } from 'antd';
+import { useEffect, useState } from 'react';
 const { TextArea } = Input;
 const getBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -8,14 +8,19 @@ const getBase64 = (file: File): Promise<string> =>
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = (error) => reject(error);
   });
-const MapModal: React.FC<{ visible: boolean; formModel: Record<string, any>; onCancel: () => void; onConfirm: (data: Record<string, any>) => void }> = (props) => {
-  const { visible, formModel, onCancel, onConfirm } = props;
+const MapModal: React.FC<{ visible: boolean; formModel: Record<string, any>; onCancel: () => void; onConfirm: (data: Record<string, any>) => void; onWalk: (data) => void }> = (props) => {
+  const { visible, formModel, onCancel, onConfirm, onWalk } = props;
 
   const [form] = Form.useForm();
 
+  useEffect(() => {
+    if (visible) {
+      form.setFieldsValue(formModel);
+    }
+  }, [formModel, visible]);
   const addConfirm = () => {
     form.validateFields().then((values) => {
-      console.log(values);
+      console.log(values, 'sumbit');
       onConfirm({ ...formModel, ...values });
     });
   };
@@ -41,8 +46,20 @@ const MapModal: React.FC<{ visible: boolean; formModel: Record<string, any>; onC
 
   const handleChange = ({ fileList: newFileList }) => setFileList(newFileList);
 
+  const pathGuid = () => {
+    onWalk([formModel.position.lng, formModel.position.lat]); 
+  }
+
+  const footer = (_, { OkBtn, CancelBtn }) => (
+    <>
+      <Button onClick={pathGuid}>路线规划</Button>
+      <CancelBtn />
+      <OkBtn />
+    </>
+  );
+
   return (
-    <Modal title="添加锚点" open={visible} onOk={addConfirm} onCancel={onCancel} okText="确认" cancelText="取消">
+    <Modal title={formModel?.createdAt ? '描点信息' : '添加锚点'} open={visible} onOk={addConfirm} onCancel={onCancel} okText="确认" cancelText="取消" footer={footer}>
       <Form name="basic" form={form} initialValues={formModel} autoComplete="off">
         <Form.Item label="当前位置" name="postion">
           <span>
